@@ -1,14 +1,14 @@
 # depgraph
 
-Extract class dependency graphs from source code using tree-sitter. Supports TypeScript, Java, and Swift.
+Extract class dependency graphs from source code using tree-sitter. Supports TypeScript, Java, Swift, and Go.
 
-depgraph parses your codebase and produces a structured JSON graph of types (classes, interfaces, protocols, enums, type aliases) and their relationships (inheritance, field types, method signatures). It also diffs graphs between commits to detect architectural changes.
+depgraph parses your codebase and produces a structured graph of types (classes, interfaces, protocols, enums, type aliases) and their relationships (inheritance, field types, method signatures). Every command outputs readable markdown by default, or raw JSON with `--json`.
 
 ## Why
 
-- **Feed architecture context to AI agents.** Give coding assistants a compact, structured view of your type hierarchy instead of making them grep through files.
-- **Catch architectural drift in CI.** Run `depgraph diff` in pre-commit hooks or CI to surface when someone adds a new dependency between modules.
-- **Understand unfamiliar codebases.** Scan a project and immediately see which types depend on which.
+- **Give agents a codebase map.** Feed `depgraph scan` output into an agent's system prompt so it understands your architecture before touching code.
+- **Review what agents did to coupling.** Run `depgraph diff` after a work session to see what dependencies were added, removed, and whether coupling increased.
+- **Understand unfamiliar codebases.** Scan a project and immediately see which types depend on which, what the hubs are, and how things are distributed.
 
 ## Install
 
@@ -22,74 +22,97 @@ Or run directly:
 npx @tartakovsky/depgraph scan ./src
 ```
 
-Works without a C++ compiler — native tree-sitter bindings are used when available (faster), with automatic fallback to WebAssembly grammars.
+No C++ compiler needed — native tree-sitter bindings are used when available (faster), with automatic fallback to WebAssembly grammars.
 
-## Usage
+## Commands
 
-### Scan a directory
+### `depgraph scan <dir>`
+
+Scan a directory and output its dependency graph.
 
 ```bash
 depgraph scan ./src
 ```
 
-Output:
+Default output (markdown summary):
 
-```json
-{
-  "nodes": [
-    { "name": "GraphNode", "kind": "interface", "file": "graph.ts", "line": 1 },
-    { "name": "GraphEdge", "kind": "interface", "file": "graph.ts", "line": 8 },
-    { "name": "DependencyGraph", "kind": "interface", "file": "graph.ts", "line": 20 },
-    { "name": "GraphDiff", "kind": "interface", "file": "diff.ts", "line": 4 }
-  ],
-  "edges": [
-    { "from": "DependencyGraph", "to": "GraphNode", "kind": "field_type" },
-    { "from": "DependencyGraph", "to": "GraphEdge", "kind": "field_type" },
-    { "from": "GraphDiff", "to": "GraphNode", "kind": "field_type" },
-    { "from": "GraphDiff", "to": "GraphEdge", "kind": "field_type" }
-  ],
-  "scannedAt": "2026-02-20T22:24:28.402Z",
-  "commitSha": "a0d8c7e"
-}
+```
+## Dependency Graph Summary
+
+**376** types across **210** files, **636** dependencies
+
+**Types:** 141 type_aliases, 117 classes, 114 interfaces, 4 enums
+**Edges:** 274 method_param, 150 method_return, 129 field_type, 50 implements, 33 extends
+
+### Most connected types
+
+- **PostgresConfigRepository** (class) — 44 connections (44 out, 0 in) — `infrastructure/persistence/PostgresConfigRepository.java`
+- **ConfigRepository** (interface) — 39 connections (12 out, 27 in) — `domain/repository/ConfigRepository.java`
+- **BackendClient** (class) — 20 connections (20 out, 0 in) — `web/src/lib/backend-client.ts`
+
+### Most depended-on types
+
+- **ConfigRepository** — used by 15 types: ApplicationConfig, PostgresConfigRepository, ...
+- **Platform** — used by 19 types: TransformContext, PostgresReviewItemRepository, ...
+
+### Type distribution
+
+- `web/src/types/` — 102 types
+- `web/src/lib/` — 38 types
+- `web/src/repositories/` — 31 types
+
+*94 types with no dependencies (standalone).*
 ```
 
-Write to a file:
+JSON output:
 
 ```bash
-depgraph scan ./src -o graph.json
+depgraph scan ./src --json           # Full JSON graph to stdout
+depgraph scan ./src -o graph.json    # Write JSON to file
 ```
 
 Filter by language:
 
 ```bash
-depgraph scan ./src -l ts        # TypeScript only
-depgraph scan ./src -l java      # Java only
-depgraph scan ./src -l ts,java   # Both
+depgraph scan ./src -l ts            # TypeScript only
+depgraph scan ./src -l java          # Java only
+depgraph scan ./src -l ts,java,go    # Multiple
 ```
 
-### Diff against a previous commit
+### `depgraph diff <dir>`
+
+Show dependency graph changes vs a previous commit.
 
 ```bash
 depgraph diff .
 ```
 
-Output:
+Default output (markdown with coupling context):
 
 ```
 ## Architecture Changes
 
-### New types
-+ UserService (class) in src/services/user.ts
-+ UserRepository (interface) in src/repos/user.ts
+**Before:** 372 types, 620 dependencies
+**After:** 376 types, 636 dependencies
+**Delta:** +4 types, +16 dependencies
 
-### Removed types
-- OldHelper (class) was in src/utils/old.ts
+### New types
+
++ **UserService** (class) in `src/services/user.ts` — 8 connections
++ **UserRepository** (interface) in `src/repos/user.ts` — 5 connections
 
 ### New dependencies
-+ UserService -> UserRepository (field_type)
+
++ UserService → UserRepository (field_type) — UserService now has 8 outgoing deps (was 5)
++ UserService → Config (field_type) — UserService now has 8 outgoing deps (was 5)
+
+### Coupling changes
+
+- **UserService**: 5 → 13 connections (+8)
+- **UserRepository**: 0 → 5 connections (+5)
 
 ### Summary
-2 type(s) added. 1 type(s) removed. 1 dependency(ies) added.
+2 types added, 2 deps added. Net coupling: +16.
 ```
 
 Compare against a specific ref:
@@ -97,28 +120,62 @@ Compare against a specific ref:
 ```bash
 depgraph diff . --ref HEAD~3
 depgraph diff . --ref main
+depgraph diff . --json              # Raw JSON diff
 ```
 
-Get raw JSON instead of formatted text:
+### `depgraph hook [dir]`
+
+Same as `diff` but silent when nothing changed — designed for git hooks.
 
 ```bash
-depgraph diff . --json
+depgraph hook                       # Compare against HEAD
+depgraph hook --ref HEAD~1          # Compare against specific ref
+depgraph hook --json                # Raw JSON output
 ```
 
-### Pre-commit hook
+## How to use it
 
-The `hook` command outputs architecture changes only when they exist, designed for pre-commit hooks that feed context to AI agents:
+### 1. Feed architecture context to an agent
+
+Run `depgraph scan` and paste the output into your agent's context. The agent immediately knows your type hierarchy, coupling hotspots, and module boundaries.
 
 ```bash
-depgraph hook
+# Add to system prompt or paste into a session
+depgraph scan ./src
 ```
 
-Example in a Claude Code hook (`.claude/settings.json`):
+Or save the JSON for programmatic use:
+
+```bash
+depgraph scan ./src -o .depgraph.json
+```
+
+### 2. Review coupling after an agent work session
+
+After an agent makes changes, run `diff` to see what it did to your architecture:
+
+```bash
+depgraph diff . --ref HEAD~5   # Compare against 5 commits ago
+```
+
+The output shows not just what changed, but how it affected coupling — "UserService now has 8 outgoing deps (was 5)" tells you whether the agent over-coupled things.
+
+You can pipe this to a review agent:
+
+```bash
+depgraph diff . --ref HEAD~5 | claude "Review these architectural changes. \
+  Were any of these couplings unnecessary? Could the same goal have been \
+  achieved with fewer dependencies?"
+```
+
+### 3. Post-commit hook for continuous awareness
+
+Add to `.claude/settings.json` to surface architecture changes during development:
 
 ```json
 {
   "hooks": {
-    "PreToolUse": [
+    "PostToolUse": [
       {
         "matcher": "Bash",
         "hooks": ["depgraph hook"]
@@ -126,6 +183,15 @@ Example in a Claude Code hook (`.claude/settings.json`):
     ]
   }
 }
+```
+
+### 4. CI check
+
+Add to your CI pipeline to track architectural changes in PRs:
+
+```bash
+# In CI script
+depgraph diff . --ref origin/main
 ```
 
 ## What it extracts
@@ -161,9 +227,7 @@ Only edges between types defined in the scanned codebase are included — refere
 
 ## Requirements
 
-- Node.js >= 18
-
-No C++ compiler needed. Native tree-sitter bindings are optional — if they can't be built, depgraph automatically uses WebAssembly grammars instead (slightly slower, same results).
+- Node.js >= 18 (recommended: Node 22)
 
 ## License
 

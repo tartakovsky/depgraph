@@ -1,6 +1,21 @@
 import type { GraphDiff } from "./diff.js";
+import type { DependencyGraph } from "./graph.js";
+import { formatDiffSummary } from "./format.js";
 
-export function formatDiffForAgent(diff: GraphDiff): string {
+/**
+ * @deprecated Use formatDiffSummary from format.ts instead.
+ * Kept for backwards compatibility.
+ */
+export function formatDiffForAgent(
+  diff: GraphDiff,
+  before?: DependencyGraph,
+  after?: DependencyGraph
+): string {
+  if (before && after) {
+    return formatDiffSummary(diff, before, after);
+  }
+
+  // Fallback: minimal format when graphs aren't available
   const lines: string[] = [];
 
   lines.push("## Architecture Changes");
@@ -38,20 +53,13 @@ export function formatDiffForAgent(diff: GraphDiff): string {
     lines.push("");
   }
 
-  const totalTypes = diff.addedNodes.length + diff.removedNodes.length;
-  const totalEdges = diff.addedEdges.length + diff.removedEdges.length;
+  const parts: string[] = [];
+  if (diff.addedNodes.length > 0) parts.push(`${diff.addedNodes.length} type(s) added`);
+  if (diff.removedNodes.length > 0) parts.push(`${diff.removedNodes.length} type(s) removed`);
+  if (diff.addedEdges.length > 0) parts.push(`${diff.addedEdges.length} dependency(ies) added`);
+  if (diff.removedEdges.length > 0) parts.push(`${diff.removedEdges.length} dependency(ies) removed`);
 
   lines.push("### Summary");
-  const parts: string[] = [];
-  if (diff.addedNodes.length > 0)
-    parts.push(`${diff.addedNodes.length} type(s) added`);
-  if (diff.removedNodes.length > 0)
-    parts.push(`${diff.removedNodes.length} type(s) removed`);
-  if (diff.addedEdges.length > 0)
-    parts.push(`${diff.addedEdges.length} dependency(ies) added`);
-  if (diff.removedEdges.length > 0)
-    parts.push(`${diff.removedEdges.length} dependency(ies) removed`);
-
   if (parts.length === 0) {
     lines.push("No architectural changes detected.");
   } else {
