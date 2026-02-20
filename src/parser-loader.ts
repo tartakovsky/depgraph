@@ -12,7 +12,8 @@ async function detectBackend(): Promise<Backend> {
   if (detectedBackend) return detectedBackend;
 
   try {
-    nativeTreeSitter = (await import("tree-sitter")).default;
+    const pkg = "tree-sitter";
+    nativeTreeSitter = (await import(/* webpackIgnore: true */ pkg)).default;
     detectedBackend = "native";
   } catch {
     detectedBackend = "wasm";

@@ -134,8 +134,8 @@ Example in a Claude Code hook (`.claude/settings.json`):
 
 | Kind | Languages |
 |------|-----------|
-| `class` | TypeScript, Java, Swift |
-| `interface` | TypeScript, Java |
+| `class` | TypeScript, Java, Swift, Go (structs) |
+| `interface` | TypeScript, Java, Go |
 | `protocol` | Swift |
 | `enum` | TypeScript, Java, Swift |
 | `type_alias` | TypeScript |
@@ -144,7 +144,7 @@ Example in a Claude Code hook (`.claude/settings.json`):
 
 | Kind | Meaning | Example |
 |------|---------|---------|
-| `extends` | Class/interface inheritance | `class Dog extends Animal` |
+| `extends` | Class/interface inheritance, struct/interface embedding | `class Dog extends Animal`, `type Dog struct { Animal }` |
 | `implements` | Interface/protocol conformance | `class User implements Serializable` |
 | `field_type` | Type used in a field | `address: Address` |
 | `method_param` | Type used as method parameter | `execute(query: Query)` |
@@ -157,6 +157,7 @@ Only edges between types defined in the scanned codebase are included — refere
 - TypeScript / TSX
 - Java
 - Swift
+- Go
 
 ## Requirements
 

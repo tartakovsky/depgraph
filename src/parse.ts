@@ -7,6 +7,7 @@ import { edgeKey } from "./graph.js";
 import { parseTypeScript, TYPESCRIPT_EXTENSIONS } from "./languages/typescript.js";
 import { parseJava, JAVA_EXTENSIONS } from "./languages/java.js";
 import { parseSwift, SWIFT_EXTENSIONS } from "./languages/swift.js";
+import { parseGo, GO_EXTENSIONS } from "./languages/go.js";
 
 type ParseFn = (source: string, filePath: string) => Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }>;
 
@@ -19,6 +20,7 @@ const LANGUAGES: LanguageEntry[] = [
   { extensions: TYPESCRIPT_EXTENSIONS, parse: parseTypeScript },
   { extensions: JAVA_EXTENSIONS, parse: parseJava },
   { extensions: SWIFT_EXTENSIONS, parse: parseSwift },
+  { extensions: GO_EXTENSIONS, parse: parseGo },
 ];
 
 function getParserForFile(filePath: string): ParseFn | null {
