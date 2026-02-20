@@ -1,6 +1,6 @@
 {
   "name": "@tartakovsky/depgraph",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tree-sitter class dependency graph extractor for TS/Java/Swift",
   "type": "module",
   "bin": {
