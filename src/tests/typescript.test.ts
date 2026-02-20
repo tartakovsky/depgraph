@@ -192,4 +192,48 @@ class MyComponent {
     const edge = edges.find((e) => e.from === "MyComponent" && e.to === "Props");
     assert.ok(edge, "Should extract edges from TSX files");
   });
+
+  it("extracts type from generic extends", async () => {
+    const source = `
+class Base {}
+class Container<T> extends Base {}
+`;
+    const { edges } = await parseTypeScript(source, "gen.ts");
+    const edge = edges.find((e) => e.from === "Container" && e.to === "Base");
+    assert.ok(edge, "Should extract extends through generic class");
+  });
+
+  it("handles abstract classes", async () => {
+    const source = `
+abstract class Shape {
+  abstract area(): number;
+}
+class Circle extends Shape {
+  area() { return 0; }
+}
+`;
+    const { nodes, edges } = await parseTypeScript(source, "shapes.ts");
+    assert.equal(nodes.length, 2);
+    const edge = edges.find((e) => e.from === "Circle" && e.to === "Shape");
+    assert.ok(edge, "Should extract extends from abstract class");
+  });
+
+  it("handles interface extending multiple interfaces", async () => {
+    const source = `
+interface A {}
+interface B {}
+interface C extends A, B {}
+`;
+    const { edges } = await parseTypeScript(source, "multi.ts");
+    const aEdge = edges.find((e) => e.from === "C" && e.to === "A");
+    const bEdge = edges.find((e) => e.from === "C" && e.to === "B");
+    assert.ok(aEdge, "Should have C -> A extends");
+    assert.ok(bEdge, "Should have C -> B extends");
+  });
+
+  it("does not crash on empty source", async () => {
+    const { nodes, edges } = await parseTypeScript("", "empty.ts");
+    assert.equal(nodes.length, 0);
+    assert.equal(edges.length, 0);
+  });
 });

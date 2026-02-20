@@ -146,4 +146,34 @@ class Service extends Base implements Loggable {}
     assert.ok(extendsEdge, "Should have extends edge");
     assert.ok(implEdge, "Should have implements edge");
   });
+
+  it("extracts types from generic fields", async () => {
+    const source = `
+class User {}
+class UserList {
+  private List<User> users;
+}
+`;
+    const { edges } = await parseJava(source, "UserList.java");
+    const edge = edges.find(
+      (e) => e.from === "UserList" && e.to === "User" && e.kind === "field_type"
+    );
+    assert.ok(edge, "Should extract User from List<User> generic field");
+  });
+
+  it("extracts extends with generics", async () => {
+    const source = `
+class Base {}
+class Child extends Base {}
+`;
+    const { edges } = await parseJava(source, "Child.java");
+    const edge = edges.find((e) => e.from === "Child" && e.to === "Base");
+    assert.ok(edge, "Should extract extends through generic");
+  });
+
+  it("does not crash on empty source", async () => {
+    const { nodes, edges } = await parseJava("", "Empty.java");
+    assert.equal(nodes.length, 0);
+    assert.equal(edges.length, 0);
+  });
 });

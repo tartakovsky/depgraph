@@ -198,4 +198,72 @@ type Cache struct {}
     const names = nodes.map((n) => n.name).sort();
     assert.deepEqual(names, ["APIClient", "Cache", "Fetcher"]);
   });
+
+  it("extracts method with multiple return types", async () => {
+    const source = `
+package main
+
+type Result struct {}
+type Service struct {}
+
+func (s *Service) Fetch() (Result, error) { return Result{}, nil }
+`;
+    const { edges } = await parseGo(source, "svc.go");
+    const resultEdge = edges.find(
+      (e) => e.from === "Service" && e.to === "Result" && e.kind === "method_return"
+    );
+    assert.ok(resultEdge, "Should extract Result from multi-return");
+    // error is builtin, should not appear
+    const errorEdge = edges.find((e) => e.to === "error");
+    assert.equal(errorEdge, undefined, "Should not include builtin error type");
+  });
+
+  it("handles struct with mixed embeddings and fields", async () => {
+    const source = `
+package main
+
+type Base struct {}
+type Logger struct {}
+type Config struct {}
+
+type App struct {
+  Base
+  *Logger
+  Cfg Config
+  Name string
+}
+`;
+    const { edges } = await parseGo(source, "app.go");
+    const baseEdge = edges.find((e) => e.from === "App" && e.to === "Base" && e.kind === "extends");
+    const loggerEdge = edges.find((e) => e.from === "App" && e.to === "Logger" && e.kind === "extends");
+    const cfgEdge = edges.find((e) => e.from === "App" && e.to === "Config" && e.kind === "field_type");
+    assert.ok(baseEdge, "Should have embedding edge to Base");
+    assert.ok(loggerEdge, "Should have pointer embedding edge to Logger");
+    assert.ok(cfgEdge, "Should have field_type edge to Config");
+    // string is builtin
+    const stringEdge = edges.find((e) => e.to === "string");
+    assert.equal(stringEdge, undefined, "Should not include builtin string");
+  });
+
+  it("handles value receiver methods", async () => {
+    const source = `
+package main
+
+type Request struct {}
+type Handler struct {}
+
+func (h Handler) Handle(r Request) {}
+`;
+    const { edges } = await parseGo(source, "handler.go");
+    const edge = edges.find(
+      (e) => e.from === "Handler" && e.to === "Request" && e.kind === "method_param"
+    );
+    assert.ok(edge, "Should extract method_param from value receiver method");
+  });
+
+  it("does not crash on empty source", async () => {
+    const { nodes, edges } = await parseGo("package main", "empty.go");
+    assert.equal(nodes.length, 0);
+    assert.equal(edges.length, 0);
+  });
 });
