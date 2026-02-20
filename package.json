@@ -1,0 +1,38 @@
+{
+  "name": "depgraph-cli",
+  "version": "0.1.0",
+  "description": "Tree-sitter class dependency graph extractor for TS/Java/Swift",
+  "type": "module",
+  "bin": {
+    "depgraph": "./bin/depgraph.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test dist/tests/*.js",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "glob": "^11.0.1",
+    "web-tree-sitter": "^0.25.0"
+  },
+  "optionalDependencies": {
+    "tree-sitter": "^0.21.1",
+    "tree-sitter-typescript": "^0.23.2",
+    "tree-sitter-java": "^0.23.4",
+    "tree-sitter-swift": "^0.6.0",
+    "tree-sitter-wasms": "^0.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
