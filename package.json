@@ -1,5 +1,5 @@
 {
-  "name": "depgraph-cli",
+  "name": "@tartakovsky/depgraph",
   "version": "0.1.0",
   "description": "Tree-sitter class dependency graph extractor for TS/Java/Swift",
   "type": "module",

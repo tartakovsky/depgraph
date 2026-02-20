@@ -13,13 +13,13 @@ depgraph parses your codebase and produces a structured JSON graph of types (cla
 ## Install
 
 ```bash
-npm install -g depgraph-cli
+npm install -g @tartakovsky/depgraph
 ```
 
 Or run directly:
 
 ```bash
-npx depgraph-cli scan ./src
+npx @tartakovsky/depgraph scan ./src
 ```
 
 Works without a C++ compiler — native tree-sitter bindings are used when available (faster), with automatic fallback to WebAssembly grammars.
